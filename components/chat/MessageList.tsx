@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Badge } from "@/components/ui/badge";
 import type { Message } from "./ChatInterface";
 
 interface MessageListProps {
@@ -40,6 +41,22 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
                 : "bg-muted text-foreground"
             }`}
           >
+            {/* Attachment badges pinned to user messages */}
+            {msg.role === "user" && msg.attachments && msg.attachments.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {msg.attachments.map((att, j) => (
+                  <Badge
+                    key={j}
+                    variant="secondary"
+                    className="text-xs opacity-80 max-w-[200px]"
+                  >
+                    <span className="mr-1">{att.type === "file" ? "📄" : "🔗"}</span>
+                    <span className="truncate">{att.name}</span>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
             {msg.role === "assistant" ? (
               <ReactMarkdown
                 components={{
@@ -83,6 +100,7 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
           </div>
         </div>
       ))}
+
       {isStreaming && (
         <div className="flex justify-start">
           <div className="bg-muted rounded-2xl px-4 py-3">

@@ -7,13 +7,19 @@ import { readStream } from "@/lib/streaming";
 import { ModelSelector } from "./ModelSelector";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
-import type { Attachment } from "./FileAttachment";
 import { Button } from "@/components/ui/button";
 import { SquarePen } from "lucide-react";
+
+export interface Attachment {
+  type: "file" | "url";
+  name: string;
+  text: string;
+}
 
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  attachments?: Pick<Attachment, "name" | "type">[];
 }
 
 export function ChatInterface() {
@@ -28,26 +34,28 @@ export function ChatInterface() {
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string, attachment?: Attachment) => {
+    async (text: string, attachments: Attachment[]) => {
       if (isStreaming) return;
 
-      const userMessage: Message = { role: "user", content: text };
+      const context = attachments.length > 0
+        ? attachments.map((a) => `[${a.name}]\n${a.text}`).join("\n\n---\n\n")
+        : null;
+
+      const userMessage: Message = {
+        role: "user",
+        content: text,
+        attachments: attachments.map(({ name, type }) => ({ name, type })),
+      };
       setMessages((prev) => [...prev, userMessage]);
       setIsStreaming(true);
 
-      const assistantPlaceholder: Message = { role: "assistant", content: "" };
-      setMessages((prev) => [...prev, assistantPlaceholder]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: text,
-            agentId,
-            threadId,
-            context: attachment?.text ?? null,
-          }),
+          body: JSON.stringify({ message: text, agentId, threadId, context }),
         });
 
         if (!res.ok) {
@@ -55,28 +63,19 @@ export function ChatInterface() {
           throw new Error(err.error ?? "Erro desconhecido");
         }
 
-        await readStream(
-          res,
-          (chunk) => {
-            setMessages((prev) => {
-              const updated = [...prev];
-              const last = updated[updated.length - 1];
-              updated[updated.length - 1] = {
-                ...last,
-                content: last.content + chunk,
-              };
-              return updated;
-            });
-          }
-        );
+        await readStream(res, (chunk) => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            updated[updated.length - 1] = { ...last, content: last.content + chunk };
+            return updated;
+          });
+        });
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Erro ao contactar a API.";
+        const msg = err instanceof Error ? err.message : "Erro ao contactar a API.";
         setMessages((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = {
-            role: "assistant",
-            content: `Erro: ${errorMsg}`,
-          };
+          updated[updated.length - 1] = { role: "assistant", content: `Erro: ${msg}` };
           return updated;
         });
       } finally {
@@ -88,7 +87,6 @@ export function ChatInterface() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
         <h1 className="font-semibold text-base tracking-tight">iaedu</h1>
         <div className="flex items-center gap-2">
@@ -105,10 +103,7 @@ export function ChatInterface() {
         </div>
       </header>
 
-      {/* Messages */}
       <MessageList messages={messages} isStreaming={isStreaming} />
-
-      {/* Input */}
       <MessageInput onSend={sendMessage} disabled={isStreaming} />
     </div>
   );
