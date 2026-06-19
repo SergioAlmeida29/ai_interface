@@ -17,6 +17,7 @@ export interface Attachment {
 }
 
 export interface Message {
+  id: string;
   role: "user" | "assistant";
   content: string;
   attachments?: Pick<Attachment, "name" | "type">[];
@@ -42,14 +43,20 @@ export function ChatInterface() {
         : null;
 
       const userMessage: Message = {
+        id: uuidv4(),
         role: "user",
         content: text,
         attachments: attachments.map(({ name, type }) => ({ name, type })),
       };
-      setMessages((prev) => [...prev, userMessage]);
-      setIsStreaming(true);
 
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      // Assign a stable ID to the assistant reply so we can update it by ID
+      const assistantId = uuidv4();
+      setMessages((prev) => [
+        ...prev,
+        userMessage,
+        { id: assistantId, role: "assistant", content: "" },
+      ]);
+      setIsStreaming(true);
 
       try {
         const res = await fetch("/api/chat", {
@@ -64,20 +71,19 @@ export function ChatInterface() {
         }
 
         await readStream(res, (chunk) => {
-          setMessages((prev) => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            updated[updated.length - 1] = { ...last, content: last.content + chunk };
-            return updated;
-          });
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: m.content + chunk } : m
+            )
+          );
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro ao contactar a API.";
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: `Erro: ${msg}` };
-          return updated;
-        });
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, content: `Erro: ${msg}` } : m
+          )
+        );
       } finally {
         setIsStreaming(false);
       }

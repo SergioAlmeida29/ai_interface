@@ -4,11 +4,8 @@ import { getAgentById, getAgentApiKey } from "@/lib/agents";
 export async function POST(req: NextRequest) {
   const { message, agentId, threadId, context } = await req.json();
 
-  console.log("[chat] →", { agentId, threadId, messageLength: message?.length, hasContext: !!context });
-
   const agent = getAgentById(agentId);
   if (!agent) {
-    console.error("[chat] Unknown agentId:", agentId);
     return new Response(JSON.stringify({ error: "Invalid agent" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -18,8 +15,7 @@ export async function POST(req: NextRequest) {
   let apiKey: string;
   try {
     apiKey = getAgentApiKey(agent);
-  } catch (err) {
-    console.error("[chat] Missing API key for", agent.envKey, err);
+  } catch {
     return new Response(JSON.stringify({ error: "API key not configured" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -33,15 +29,11 @@ export async function POST(req: NextRequest) {
     ? `${message}\n\n--- Documentos / Contexto Anexado ---\n${context.slice(0, MAX_CONTEXT_CHARS)}${context.length > MAX_CONTEXT_CHARS ? "\n[... truncado ...]" : ""}`
     : message;
 
-  console.log("[chat] fullMessage length:", fullMessage.length);
-
   const formData = new FormData();
   formData.append("channel_id", agent.channelId);
   formData.append("thread_id", threadId);
   formData.append("user_info", "{}");
   formData.append("message", fullMessage);
-
-  console.log("[chat] Calling upstream:", agent.endpoint);
 
   const upstream = await fetch(agent.endpoint, {
     method: "POST",
@@ -49,13 +41,9 @@ export async function POST(req: NextRequest) {
     body: formData,
   });
 
-  console.log("[chat] Upstream response:", upstream.status, upstream.headers.get("Content-Type"));
-
   if (!upstream.ok) {
-    const text = await upstream.text();
-    console.error("[chat] Upstream error body:", text);
     return new Response(
-      JSON.stringify({ error: `Upstream error: ${upstream.status}`, detail: text }),
+      JSON.stringify({ error: `Upstream error: ${upstream.status}` }),
       { status: upstream.status, headers: { "Content-Type": "application/json" } }
     );
   }

@@ -29,9 +29,9 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-      {messages.map((msg, i) => (
+      {messages.map((msg) => (
         <div
-          key={i}
+          key={msg.id}
           className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
         >
           <div
