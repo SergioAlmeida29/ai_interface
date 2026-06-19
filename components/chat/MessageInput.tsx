@@ -85,14 +85,17 @@ export function MessageInput({ onSend, disabled }: MessageInputProps) {
     setLoading(true);
     setLoadError(null);
     try {
+      // Ensure the URL has a protocol
+      const raw = urlValue.trim();
+      const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
       const res = await fetch("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: urlValue.trim() }),
+        body: JSON.stringify({ url: normalized }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-      const hostname = new URL(urlValue.trim()).hostname;
+      const hostname = new URL(normalized).hostname;
       setAttachments((prev) => [
         ...prev,
         { type: "url" as const, name: hostname, text: data.text },

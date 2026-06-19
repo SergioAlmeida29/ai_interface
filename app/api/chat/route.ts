@@ -26,14 +26,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Context injected directly into the message — the API's user_context field
+  // is metadata only and is not visible to the AI model.
+  const MAX_CONTEXT_CHARS = 12000;
+  const fullMessage = context
+    ? `${message}\n\n--- Documentos / Contexto Anexado ---\n${context.slice(0, MAX_CONTEXT_CHARS)}${context.length > MAX_CONTEXT_CHARS ? "\n[... truncado ...]" : ""}`
+    : message;
+
+  console.log("[chat] fullMessage length:", fullMessage.length);
+
   const formData = new FormData();
   formData.append("channel_id", agent.channelId);
   formData.append("thread_id", threadId);
   formData.append("user_info", "{}");
-  formData.append("message", message);
-  if (context) {
-    formData.append("user_context", JSON.stringify({ document: context }));
-  }
+  formData.append("message", fullMessage);
 
   console.log("[chat] Calling upstream:", agent.endpoint);
 
