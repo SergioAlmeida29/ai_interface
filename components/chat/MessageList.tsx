@@ -1,0 +1,100 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import type { Message } from "./ChatInterface";
+
+interface MessageListProps {
+  messages: Message[];
+  isStreaming: boolean;
+}
+
+export function MessageList({ messages, isStreaming }: MessageListProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isStreaming]);
+
+  if (messages.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+        Começa uma conversa abaixo.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+      {messages.map((msg, i) => (
+        <div
+          key={i}
+          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+        >
+          <div
+            className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+              msg.role === "user"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-foreground"
+            }`}
+          >
+            {msg.role === "assistant" ? (
+              <ReactMarkdown
+                components={{
+                  code({ className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || "");
+                    const isBlock = !!match;
+                    return isBlock ? (
+                      <SyntaxHighlighter
+                        style={oneDark}
+                        language={match[1]}
+                        PreTag="div"
+                        className="rounded-lg text-xs my-2"
+                      >
+                        {String(children).replace(/\n$/, "")}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code
+                        className="bg-black/20 rounded px-1 py-0.5 text-xs font-mono"
+                        {...props}
+                      >
+                        {children}
+                      </code>
+                    );
+                  },
+                  p({ children }) {
+                    return <p className="mb-2 last:mb-0">{children}</p>;
+                  },
+                  ul({ children }) {
+                    return <ul className="list-disc pl-4 mb-2">{children}</ul>;
+                  },
+                  ol({ children }) {
+                    return <ol className="list-decimal pl-4 mb-2">{children}</ol>;
+                  },
+                }}
+              >
+                {msg.content}
+              </ReactMarkdown>
+            ) : (
+              <p className="whitespace-pre-wrap">{msg.content}</p>
+            )}
+          </div>
+        </div>
+      ))}
+      {isStreaming && (
+        <div className="flex justify-start">
+          <div className="bg-muted rounded-2xl px-4 py-3">
+            <span className="flex gap-1">
+              <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:0ms]" />
+              <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:150ms]" />
+              <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:300ms]" />
+            </span>
+          </div>
+        </div>
+      )}
+      <div ref={bottomRef} />
+    </div>
+  );
+}
