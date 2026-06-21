@@ -1,9 +1,4 @@
-import dynamic from "next/dynamic";
-
-const ChatLayout = dynamic(
-  () => import("@/components/chat/ChatLayout").then((m) => m.ChatLayout),
-  { ssr: false }
-);
+import { ChatLayout } from "@/components/chat/ChatLayout";
 
 export default function Home() {
   return <ChatLayout conversationId={null} />;
