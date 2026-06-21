@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Trash2, MessageSquare } from "lucide-react";
+import { Trash2, MessageSquare, LogOut, Link2 } from "lucide-react";
 import { AGENTS } from "@/lib/agents";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export interface ConversationItem {
   id: string;
@@ -38,13 +40,14 @@ export function ConversationSidebar({
   refreshKey,
 }: ConversationSidebarProps) {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [user, setUser] = useState<User | null>(null);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/conversations");
       if (res.ok) setConversations(await res.json());
     } catch {
-      // silently ignore — sidebar is non-critical
+      // non-critical
     }
   }, []);
 
@@ -52,11 +55,32 @@ export function ConversationSidebar({
     load();
   }, [load, refreshKey]);
 
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
+
   async function deleteConversation(e: React.MouseEvent, id: string) {
     e.stopPropagation();
     await fetch(`/api/conversations/${id}`, { method: "DELETE" });
     setConversations((prev) => prev.filter((c) => c.id !== id));
   }
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }
+
+  async function handleLinkGoogle() {
+    const supabase = createClient();
+    await supabase.auth.linkIdentity({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  }
+
+  const hasGoogle = user?.identities?.some((i) => i.provider === "google");
 
   return (
     <aside className="flex flex-col h-full w-full bg-muted/40 border-r">
@@ -102,6 +126,31 @@ export function ConversationSidebar({
           </ul>
         )}
       </div>
+
+      {user && (
+        <div className="border-t px-3 py-3 space-y-2">
+          <p className="text-xs text-muted-foreground truncate" title={user.email}>
+            {user.email}
+          </p>
+          {!hasGoogle && (
+            <button
+              onClick={handleLinkGoogle}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              title="Ligar conta Google"
+            >
+              <Link2 className="w-3 h-3" />
+              Ligar conta Google
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LogOut className="w-3 h-3" />
+            Terminar sessão
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

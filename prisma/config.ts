@@ -1,5 +1,8 @@
+import { config as loadEnv } from "dotenv";
 import { defineConfig } from "prisma/config";
 import { PrismaPg } from "@prisma/adapter-pg";
+
+loadEnv({ path: ".env.local" });
 
 export default defineConfig({
   schema: "schema.prisma",

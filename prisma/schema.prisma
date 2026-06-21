@@ -11,6 +11,7 @@ model Conversation {
   threadId  String    @unique
   title     String    @default("Nova conversa")
   agentId   String
+  userId    String    @default("")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   messages  Message[]
