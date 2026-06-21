@@ -27,18 +27,18 @@ interface ChatInterfaceProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   conversationId: string | null;
-  conversationThreadId: string | null;
-  onConversationCreated: (id: string, threadId: string) => void;
+  onConversationCreated: (id: string) => void;
   onMessagesChanged: () => void;
+  onNewChat: () => void;
 }
 
 export function ChatInterface({
   sidebarOpen,
   onToggleSidebar,
   conversationId,
-  conversationThreadId,
   onConversationCreated,
   onMessagesChanged,
+  onNewChat,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [agentId, setAgentId] = useState(AGENTS[0].id);
@@ -78,11 +78,6 @@ export function ChatInterface({
       .catch(() => {});
   }, [conversationId]);
 
-  // Sync threadId when parent passes one in (for new conversation start)
-  useEffect(() => {
-    if (conversationThreadId) setThreadId(conversationThreadId);
-  }, [conversationThreadId]);
-
   const sendMessage = useCallback(
     async (text: string, attachments: Attachment[]) => {
       if (isStreaming) return;
@@ -121,7 +116,7 @@ export function ChatInterface({
           });
           const conv = await res.json();
           convId = conv.id;
-          onConversationCreated(conv.id, conv.threadId);
+          onConversationCreated(conv.id);
         } catch {
           // non-fatal — continue without DB persistence
         }
@@ -213,12 +208,7 @@ export function ChatInterface({
             size="icon"
             variant="ghost"
             className="h-8 w-8"
-            onClick={() => {
-              setMessages([]);
-              setThreadId(uuidv4());
-              prevConvId.current = null;
-              onConversationCreated("", "");
-            }}
+            onClick={onNewChat}
             title="Nova conversa"
           >
             <SquarePen className="w-4 h-4" />
