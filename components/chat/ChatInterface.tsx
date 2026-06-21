@@ -45,11 +45,14 @@ export function ChatInterface({
   const [threadId, setThreadId] = useState(() => uuidv4());
   const [isStreaming, setIsStreaming] = useState(false);
   const prevConvId = useRef<string | null>(null);
+  // Tracks the active conversation ID across messages (prop stays null on home page)
+  const activeConvIdRef = useRef<string | null>(conversationId);
 
   // Load messages when switching to an existing conversation
   useEffect(() => {
     if (conversationId === prevConvId.current) return;
     prevConvId.current = conversationId;
+    activeConvIdRef.current = conversationId;
 
     if (!conversationId) {
       setMessages([]);
@@ -103,7 +106,7 @@ export function ChatInterface({
       setIsStreaming(true);
 
       // Resolve or create conversation in DB
-      let convId = conversationId;
+      let convId = activeConvIdRef.current;
       const currentThreadId = threadId;
 
       if (!convId) {
@@ -116,6 +119,7 @@ export function ChatInterface({
           });
           const conv = await res.json();
           convId = conv.id;
+          activeConvIdRef.current = conv.id;
           onConversationCreated(conv.id);
         } catch {
           // non-fatal — continue without DB persistence
@@ -180,7 +184,7 @@ export function ChatInterface({
         onMessagesChanged();
       }
     },
-    [agentId, threadId, isStreaming, conversationId, onConversationCreated, onMessagesChanged]
+    [agentId, threadId, isStreaming, onConversationCreated, onMessagesChanged]
   );
 
   return (
