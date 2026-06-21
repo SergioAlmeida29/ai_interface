@@ -61,8 +61,12 @@ export function ChatInterface({
     }
 
     fetch(`/api/conversations/${conversationId}`)
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
+        if (!r.ok) {
+          setMessages([{ id: "err", role: "assistant", content: "Conversa não encontrada." }]);
+          return;
+        }
+        const data = await r.json();
         if (data.messages) {
           setMessages(
             data.messages.map(
@@ -117,10 +121,12 @@ export function ChatInterface({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ threadId: currentThreadId, title, agentId }),
           });
-          const conv = await res.json();
-          convId = conv.id;
-          activeConvIdRef.current = conv.id;
-          onConversationCreated(conv.id);
+          if (res.ok) {
+            const conv = await res.json();
+            convId = conv.id;
+            activeConvIdRef.current = conv.id;
+            onConversationCreated(conv.id);
+          }
         } catch {
           // non-fatal — continue without DB persistence
         }

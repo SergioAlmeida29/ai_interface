@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Trash2, MessageSquare, LogOut, Link2 } from "lucide-react";
 import { AGENTS } from "@/lib/agents";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,8 @@ export function ConversationSidebar({
   onSelect,
   refreshKey,
 }: ConversationSidebarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [user, setUser] = useState<User | null>(null);
 
@@ -64,6 +67,7 @@ export function ConversationSidebar({
     e.stopPropagation();
     await fetch(`/api/conversations/${id}`, { method: "DELETE" });
     setConversations((prev) => prev.filter((c) => c.id !== id));
+    if (pathname === `/chat/${id}`) router.push("/");
   }
 
   async function handleLogout() {

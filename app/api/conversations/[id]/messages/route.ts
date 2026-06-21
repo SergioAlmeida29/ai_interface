@@ -20,8 +20,14 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!owns) return Response.json({ error: "Not found" }, { status: 404 });
 
   const { role, content, attachments } = await req.json();
-  const message = await db.message.create({
-    data: { conversationId, role, content, attachments: attachments ?? undefined },
-  });
+  const [message] = await db.$transaction([
+    db.message.create({
+      data: { conversationId, role, content, attachments: attachments ?? undefined },
+    }),
+    db.conversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    }),
+  ]);
   return Response.json(message, { status: 201 });
 }
