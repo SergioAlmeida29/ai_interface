@@ -102,13 +102,16 @@ export function ConversationSidebar({
         ) : (
           <ul className="py-1">
             {conversations.map((conv) => (
-              <li key={conv.id}>
+              <li
+                key={conv.id}
+                className={cn(
+                  "group relative flex items-start hover:bg-muted transition-colors animate-in fade-in duration-200",
+                  selectedId === conv.id && "bg-muted"
+                )}
+              >
                 <button
                   onClick={() => onSelect(conv)}
-                  className={cn(
-                    "group w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-muted transition-colors",
-                    selectedId === conv.id && "bg-muted"
-                  )}
+                  className="flex-1 min-w-0 text-left px-3 py-2 flex items-start gap-2"
                 >
                   <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
@@ -117,13 +120,13 @@ export function ConversationSidebar({
                       {agentLabel(conv.agentId)} · {timeAgo(conv.updatedAt)}
                     </p>
                   </div>
-                  <button
-                    onClick={(e) => deleteConversation(e, conv.id)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-destructive transition-opacity"
-                    title="Apagar"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                </button>
+                <button
+                  onClick={(e) => deleteConversation(e, conv.id)}
+                  className="opacity-0 group-hover:opacity-100 shrink-0 self-center mr-2 p-0.5 hover:text-destructive transition-opacity"
+                  title="Apagar"
+                >
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </li>
             ))}

@@ -44,9 +44,15 @@ export function ChatInterface({
   const [agentId, setAgentId] = useState(AGENTS[0].id);
   const [threadId, setThreadId] = useState(() => uuidv4());
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoadingConv, setIsLoadingConv] = useState(false);
   const prevConvId = useRef<string | null>(null);
   // Tracks the active conversation ID across messages (prop stays null on home page)
   const activeConvIdRef = useRef<string | null>(conversationId);
+  // Mirror of isStreaming as a ref so the load effect can read it without becoming a dep
+  const isStreamingRef = useRef(false);
+  isStreamingRef.current = isStreaming;
+  // IDs of messages added in this session — used to animate only new messages
+  const newMessageIdsRef = useRef<Set<string>>(new Set());
 
   // Load messages when switching to an existing conversation
   useEffect(() => {
@@ -57,9 +63,16 @@ export function ChatInterface({
     if (!conversationId) {
       setMessages([]);
       setThreadId(uuidv4());
+      newMessageIdsRef.current = new Set();
       return;
     }
 
+    newMessageIdsRef.current = new Set();
+
+    // Conversation was just created mid-stream — don't reload from DB
+    if (isStreamingRef.current) return;
+
+    setIsLoadingConv(true);
     fetch(`/api/conversations/${conversationId}`)
       .then(async (r) => {
         if (!r.ok) {
@@ -82,7 +95,8 @@ export function ChatInterface({
         if (data.agentId) setAgentId(data.agentId);
         if (data.threadId) setThreadId(data.threadId);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setIsLoadingConv(false));
   }, [conversationId]);
 
   const sendMessage = useCallback(
@@ -102,6 +116,8 @@ export function ChatInterface({
       };
 
       const assistantId = uuidv4();
+      newMessageIdsRef.current.add(userMessage.id);
+      newMessageIdsRef.current.add(assistantId);
       setMessages((prev) => [
         ...prev,
         userMessage,
@@ -127,14 +143,14 @@ export function ChatInterface({
             activeConvIdRef.current = conv.id;
             onConversationCreated(conv.id);
           }
-        } catch {
-          // non-fatal — continue without DB persistence
+        } catch (err) {
+          console.error("[persistence] create conversation", err);
         }
       }
 
-      // Save user message to DB
+      // Save user message to DB (awaited so it's in DB before streaming begins)
       if (convId) {
-        fetch(`/api/conversations/${convId}/messages`, {
+        await fetch(`/api/conversations/${convId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -142,7 +158,7 @@ export function ChatInterface({
             content: text,
             attachments: userMessage.attachments,
           }),
-        }).catch(() => {});
+        }).catch((err) => console.error("[persistence] user msg", err));
       }
 
       let assistantContent = "";
@@ -180,11 +196,11 @@ export function ChatInterface({
 
         // Save assistant message to DB
         if (convId && assistantContent) {
-          fetch(`/api/conversations/${convId}/messages`, {
+          await fetch(`/api/conversations/${convId}/messages`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ role: "assistant", content: assistantContent }),
-          }).catch(() => {});
+          }).catch((err) => console.error("[persistence] assistant msg", err));
         }
 
         onMessagesChanged();
@@ -226,7 +242,7 @@ export function ChatInterface({
         </div>
       </header>
 
-      <MessageList messages={messages} isStreaming={isStreaming} />
+      <MessageList messages={messages} isStreaming={isStreaming} newMessageIds={newMessageIdsRef.current} isLoadingConv={isLoadingConv} />
       <MessageInput onSend={sendMessage} disabled={isStreaming} />
     </div>
   );

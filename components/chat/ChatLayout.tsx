@@ -45,8 +45,9 @@ export function ChatLayout({
   }, []);
 
   const handleNewChat = useCallback(() => {
-    router.push("/");
-  }, [router]);
+    setSelectedConvId(null);
+    window.history.pushState(null, "", "/");
+  }, []);
 
   const handleMessagesChanged = useCallback(() => {
     setRefreshKey((k) => k + 1);
@@ -54,21 +55,25 @@ export function ChatLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {sidebarOpen && (
-        <div className="w-64 shrink-0 hidden sm:flex">
+      <div
+        className={`shrink-0 hidden sm:flex overflow-hidden transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "w-64" : "w-0"
+        }`}
+      >
+        <div className="w-64 min-w-64">
           <ConversationSidebar
             selectedId={selectedConvId}
             onSelect={handleSelectConversation}
             refreshKey={refreshKey}
           />
         </div>
-      )}
+      </div>
 
       <div className="flex-1 min-w-0">
         <ChatInterface
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          conversationId={conversationId}
+          conversationId={selectedConvId}
           onConversationCreated={handleConversationCreated}
           onMessagesChanged={handleMessagesChanged}
           onNewChat={handleNewChat}
